@@ -1,0 +1,11 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: 'api-gateway'
+spec:
+  ports:
+    -   name: web
+        port: 8080
+        targetPort: 8080
+  selector:
+    name: 'api-gateway'
