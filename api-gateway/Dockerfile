@@ -1,5 +1,7 @@
 FROM envoyproxy/envoy-alpine:v1.15.3
 
+RUN apk --no-cache add gettext coreutils
+
 USER 10001
 
 COPY config.yaml /envoy/envoy.yaml
