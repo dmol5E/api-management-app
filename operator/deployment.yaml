@@ -15,25 +15,20 @@ spec:
         app: 'operator'
     spec:
       containers:
-        -   name: "operator"
-            image: 'dmol5e/operator:latest'
-            env:
-              -   name: CLOUD_NAMESPACE
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: metadata.namespace
-              -   name: RLOG_LOG_LEVEL
-                  value: DEBUG
-            resources:
-              requests:
-                cpu: '100m'
-                memory: '200Mi'
-              limits:
-                cpu: '100m'
-                memory: '200Mi'
+        - name: "operator"
+          image: 'dmol5e/operator:latest'
+          env:
+            - name: CLOUD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RLOG_LOG_LEVEL
+              value: DEBUG
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '200Mi'
+            limits:
+              cpu: '100m'
+              memory: '200Mi'
       serviceAccountName: operator
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: operator

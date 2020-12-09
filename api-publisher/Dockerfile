@@ -26,5 +26,7 @@ COPY --from=build_base /tmp/go-sample-app/out/api-publisher /app/api-publisher
 # This container exposes port 8080 to the outside world
 EXPOSE 8080
 
+USER 10001
+
 # Run the binary program produced by `go install`
 CMD ["/app/api-publisher"]

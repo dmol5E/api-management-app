@@ -7,4 +7,6 @@ EXPOSE 8080 9901
 
 RUN chmod -R 777 /envoy
 
+USER 10001
+
 CMD ["/envoy/run-gateway.sh"]
