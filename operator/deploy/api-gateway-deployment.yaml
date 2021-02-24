@@ -1,9 +1,9 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: 'api-gateway'
+  name: "api-gateway"
   labels:
-    name: 'api-gateway'
+    name: "api-gateway"
 spec:
   replicas: 1
   strategy:
@@ -14,60 +14,66 @@ spec:
   template:
     metadata:
       labels:
-        name: 'api-gateway'
+        name: "api-gateway"
     spec:
       containers:
-        -   name: 'api-gateway'
-            image: dmol5e/api-gateway:latest
-            args:
-              - /envoy/run.sh
-            ports:
-              -   name: web
-                  containerPort: 8080
-                  protocol: TCP
-              -   name: admin
-                  containerPort: 9901
-                  protocol: TCP
-            env:
-              -   name: CLOUD_NAMESPACE
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: metadata.namespace
-              -   name: POD_HOSTNAME
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: metadata.name
-            resources:
-              requests:
-                cpu: '100m'
-                memory: '100Mi'
-              limits:
-                cpu: '100m'
-                memory: '100Mi'
-            livenessProbe:
-              httpGet:
-                path: '/help'
-                port: 'admin'
-              initialDelaySeconds: 300
-              timeoutSeconds: 30
-            readinessProbe:
-              httpGet:
-                path: '/help'
-                port: 'admin'
-              initialDelaySeconds: 15
-              timeoutSeconds: 30
+        - name: "api-gateway"
+          image: dmol5e/api-gateway:latest
+          args:
+            - /envoy/run-gateway.sh
+          ports:
+            - name: web
+              containerPort: 8080
+              protocol: TCP
+            - name: admin
+              containerPort: 9903
+              protocol: TCP
+          env:
+            - name: CLOUD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ENVOY_UID
+              value: '0'
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "100Mi"
+            limits:
+              cpu: "100m"
+              memory: "100Mi"
+          livenessProbe:
+            httpGet:
+              path: "/help"
+              port: "admin"
+            initialDelaySeconds: 2
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: "/help"
+              port: "admin"
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            failureThreshold: 3
+            timeoutSeconds: 30
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-            -   weight: 100
-                podAffinityTerm:
-                  labelSelector:
-                    matchExpressions:
-                      -   key: name
-                          operator: In
-                          values:
-                            - 'api-gateway'
-                  topologyKey: kubernetes.io/hostname
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: name
+                      operator: In
+                      values:
+                        - "api-gateway"
+                topologyKey: kubernetes.io/hostname
   selector:
     matchLabels:
-      name: 'api-gateway'
+      name: "api-gateway"
