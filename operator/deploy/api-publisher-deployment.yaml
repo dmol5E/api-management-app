@@ -17,8 +17,6 @@ spec:
         -   name: 'api-publisher'
             image: dmol5e/api-publisher:latest
             imagePullPolicy: Always
-            args:
-              - ''
             ports:
               -   name: web
                   containerPort: 8080
@@ -50,13 +48,17 @@ spec:
               httpGet:
                 path: /health
                 port: web
-              initialDelaySeconds: 10
+              initialDelaySeconds: 1
+              periodSeconds: 5
+              failureThreshold: 2
               timeoutSeconds: 5
             readinessProbe:
               httpGet:
-                path: /ready
+                path: /health
                 port: web
               initialDelaySeconds: 5
+              periodSeconds: 5
+              failureThreshold: 2
               timeoutSeconds: 5
   selector:
     matchLabels:

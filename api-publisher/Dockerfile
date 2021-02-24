@@ -1,4 +1,4 @@
-FROM golang:1.15.6-alpine as build_base
+FROM golang:1.16.0-alpine as build_base
 
 RUN apk add --no-cache git
 
@@ -22,6 +22,8 @@ FROM alpine:3.9
 RUN apk add ca-certificates
 
 COPY --from=build_base /tmp/go-sample-app/out/api-publisher /app/api-publisher
+RUN chown 10001:10001 /app/api-publisher
+RUN chmod 755 /app/api-publisher
 
 # This container exposes port 8080 to the outside world
 EXPOSE 8080
