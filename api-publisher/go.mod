@@ -1,4 +1,4 @@
-module api-publisher
+module github.com/dmol5e/api-management-app/api-publisher
 
 go 1.16
 
