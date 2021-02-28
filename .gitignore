@@ -1,1 +1,3 @@
 .vscode/launch.json
+api-publisher/go.sum
+api-publisher/vendor/**
