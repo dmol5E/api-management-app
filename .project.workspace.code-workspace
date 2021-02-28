@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "api-publisher"
+		},
+		{
+			"path": "api-gateway"
+		},
+		{
+			"path": "operator"
+		}
+	],
+	"remoteAuthority": "wsl+Ubuntu",
+	"settings": {}
+}

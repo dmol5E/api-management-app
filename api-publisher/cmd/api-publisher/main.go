@@ -1,13 +1,14 @@
 package main
 
 import (
-	"api-publisher/pkg/transport/xds"
 	"context"
 	"fmt"
 	logger "log"
 	"net"
 	"net/http"
 	"os"
+
+	"github.com/dmol5e/api-management-app/api-publisher/pkg/transport/xds"
 
 	"google.golang.org/grpc"
 )
