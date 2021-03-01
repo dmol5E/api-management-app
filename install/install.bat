@@ -7,4 +7,5 @@ kubectl create clusterrolebinding deployment-operator --clusterrole=deployment-o
 kubectl create clusterrole custom-resource-manager --verb=get,watch,list,create,update,patch --resource=customresourcedefinitions.apiextensions.k8s.io
 kubectl create clusterrole route-config-manager --verb=get,watch,list,create,update,patch --resource=routeconfigs.apimanagement.cloud
 kubectl create clusterrolebinding custom-resource-manager --clusterrole=custom-resource-manager --serviceaccount=api-management-app:default
+kubectl create clusterrolebinding route-config-manager --clusterrole=route-config-manager --serviceaccount=api-management-app:default
 kubectl apply -f .\operator\deployment.yaml -n %namespace%

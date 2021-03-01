@@ -27,7 +27,6 @@ func init() {
 		Kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
 	flag.Parse()
-	Debug = true
 }
 
 func CreateRouteConfigClientSet() (*clientset.Clientset, error) {
