@@ -13,10 +13,10 @@ RUN go mod download
 COPY . .
 
 # Unit tests
-RUN CGO_ENABLED=0 go test -v
+RUN CGO_ENABLED=0 go test -v ./...
 
 # Build the Go app
-RUN go build -o ./out/api-publisher .
+RUN go build -o ./out/api-publisher ./cmd/api-publisher
 
 FROM alpine:3.9
 RUN apk add ca-certificates

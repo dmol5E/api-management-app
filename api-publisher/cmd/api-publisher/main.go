@@ -31,7 +31,13 @@ func init() {
 func main() {
 	ctx := context.Background()
 
-	log.Info("Starting application")
+	var namespace string
+	namespace, found := os.LookupEnv("CLOUD_NAMESPACE")
+	if !found {
+		namespace = "default"
+	}
+
+	log.Infof("Starting application. Namespace: %s", namespace)
 
 	var grpcOptions []grpc.ServerOption
 	grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(grpcMaxConcurrentStreams))
@@ -63,6 +69,18 @@ func main() {
 	if err != nil {
 		log.Panicf("Failed to create CRD RouteConfig: %v", err)
 	}
+
+	routeConfigClient, err := discovery.CreateRouteConfigClientSet()
+	if err != nil {
+		log.Panicf("Failed to create ClientSet for handling RouteConfig CR: %v", err)
+	}
+	stopCh, err := discovery.StartWatching(ctx, routeConfigClient, namespace)
+	if err != nil {
+		log.Panicf("Failed to start Watching RouteConfig: %v", err)
+	}
+	defer func() {
+		stopCh <- 0
+	}()
 
 	log.Info("App has started on port 0.0.0.0:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

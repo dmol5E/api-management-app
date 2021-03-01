@@ -2,6 +2,8 @@ package discovery
 
 import (
 	"context"
+	"flag"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 
@@ -9,13 +11,39 @@ import (
 	apiextension "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
+
+var (
+	Debug      bool
+	Kubeconfig *string
+)
+
+func init() {
+	if home := homedir.HomeDir(); home != "" {
+		Kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		Kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	flag.Parse()
+	Debug = true
+}
 
 func CreateRouteConfigClientSet() (*clientset.Clientset, error) {
 	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.WithError(err).Panic("Can't set up cluster config")
+	var config *rest.Config
+	var err error
+	if !Debug {
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			log.WithError(err).Panic("Can't set up cluster config")
+		}
+	} else {
+		config, err = clientcmd.BuildConfigFromFlags("", *Kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	kubeClient, err := clientset.NewForConfig(config)
@@ -27,9 +55,18 @@ func CreateRouteConfigClientSet() (*clientset.Clientset, error) {
 }
 
 func CreateApiExtensionClientSet() (apiextension.Interface, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.WithError(err).Panic("Can't set up cluster config")
+	var config *rest.Config
+	var err error
+	if !Debug {
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			log.WithError(err).Panic("Can't set up cluster config")
+		}
+	} else {
+		config, err = clientcmd.BuildConfigFromFlags("", *Kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	kubeClient, err := apiextension.NewForConfig(config)
@@ -44,11 +81,17 @@ func StartWatching(ctx context.Context, client *clientset.Clientset, namespace s
 	stop := make(chan int)
 	watcher, err := client.ApimanagementV1alpha1().RouteConfigs(namespace).Watch(ctx, v1.ListOptions{})
 	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
+	log.Info("K8s watcher client created. Start watching...")
 	go func() {
+
 		ch := watcher.ResultChan()
-		defer watcher.Stop()
+		defer func() {
+			watcher.Stop()
+			log.Info("Wathcing stopped")
+		}()
 		for {
 			select {
 			case event := <-ch:

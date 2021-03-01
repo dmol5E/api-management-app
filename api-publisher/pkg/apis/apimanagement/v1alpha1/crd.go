@@ -30,6 +30,60 @@ func CreateCRD(ctx context.Context, clientSet apiextension.Interface) (*apiexten
 					Name:    SchemeGroupVersion.Version,
 					Served:  true,
 					Storage: true,
+					Schema: &apiextensionv1.CustomResourceValidation{
+						OpenAPIV3Schema: &apiextensionv1.JSONSchemaProps{
+							Type: "object",
+							Properties: map[string]apiextensionv1.JSONSchemaProps{
+								"spec": {
+									Type: "object",
+									Properties: map[string]apiextensionv1.JSONSchemaProps{
+										"gateway": {
+											Type: "string",
+										},
+										"routes": {
+											Type: "array",
+											Items: &apiextensionv1.JSONSchemaPropsOrArray{
+												Schema: &apiextensionv1.JSONSchemaProps{
+													Format: "object",
+													Type:   "object",
+													Properties: map[string]apiextensionv1.JSONSchemaProps{
+														"destination": {
+															Type: "object",
+															Properties: map[string]apiextensionv1.JSONSchemaProps{
+																"address": {
+																	Type: "object",
+																	Properties: map[string]apiextensionv1.JSONSchemaProps{
+																		"host": {
+																			Type: "string",
+																		},
+																		"port": {
+																			Type: "integer",
+																		},
+																	},
+																},
+															},
+														},
+														"match": {
+															Type: "object",
+															Properties: map[string]apiextensionv1.JSONSchemaProps{
+																"path": {
+																	Type: "string",
+																},
+															},
+														},
+														"pathRewrite": {
+															Type: "string",
+														},
+													},
+												},
+											},
+										},
+									},
+									Required: []string{"gateway"},
+								},
+							},
+						},
+					},
 				},
 			},
 			Scope: apiextensionv1.NamespaceScoped,

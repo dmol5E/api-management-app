@@ -1,0 +1,14 @@
+apiVersion: apimanagement.cloud/v1alpha1
+kind: RouteConfig
+metadata:
+  name: simple-route-config
+spec:
+  gateway: gateway
+  routes:
+    - destination:
+        address:
+          host: service
+          port: 8080
+      match:
+        path: /api/v1/service
+      pathRewrite: /
