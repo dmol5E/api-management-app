@@ -2,7 +2,8 @@ package xds
 
 import (
 	"context"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
@@ -18,11 +19,10 @@ import (
 
 type Server struct {
 	cache cachev3.SnapshotCache
-	log   *log.Logger
 }
 
 //RunServer Start server to serve Envoy xDS requests
-func RunServer(ctx context.Context, grpcServer *grpc.Server, log *log.Logger) *Server {
+func RunServer(ctx context.Context, grpcServer *grpc.Server) *Server {
 
 	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, logger)
 	server := serverv3.NewServer(ctx, cache, nil)
@@ -37,17 +37,16 @@ func RunServer(ctx context.Context, grpcServer *grpc.Server, log *log.Logger) *S
 
 	return &Server{
 		cache: cache,
-		log:   log,
 	}
 }
 
 func (s *Server) Update(nodeID string, snapshot cachev3.Snapshot) error {
 	if err := snapshot.Consistent(); err != nil {
-		s.log.Fatalf("snapshot inconsistency: %+v\n%+v", snapshot, err)
+		log.Errorf("snapshot inconsistency: %+v\n%+v", snapshot, err)
 	}
 	log.Printf("will serve snapshot %+v", snapshot)
 	if err := s.cache.SetSnapshot(nodeID, snapshot); err != nil {
-		s.log.Fatalf("snapshot error %q for %+v", err, snapshot)
+		log.Fatalf("snapshot error %q for %+v", err, snapshot)
 		return err
 	}
 	return nil

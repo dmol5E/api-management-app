@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-	logger "log"
 	"net"
 	"net/http"
 	"os"
 
-	"github.com/dmol5e/api-management-app/api-publisher/pkg/transport/xds"
+	applog "github.com/dmol5e/api-management-app/api-publisher/pkg/log"
+	log "github.com/sirupsen/logrus"
+	"k8s.io/klog/v2"
 
+	"github.com/dmol5e/api-management-app/api-publisher/pkg/apis/apimanagement/v1alpha1"
+	"github.com/dmol5e/api-management-app/api-publisher/pkg/k8s/discovery"
+	"github.com/dmol5e/api-management-app/api-publisher/pkg/transport/xds"
 	"google.golang.org/grpc"
 )
 
@@ -18,24 +22,21 @@ const (
 	xdsPort                  = 15010
 )
 
-var (
-	log *logger.Logger
-)
-
 func init() {
-	log = &logger.Logger{}
 	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.TextFormatter{DisableColors: false})
+	klog.SetLogger(&applog.StaticLogger{})
 }
 
 func main() {
 	ctx := context.Background()
 
-	log.Println("Starting application")
+	log.Info("Starting application")
 
 	var grpcOptions []grpc.ServerOption
 	grpcOptions = append(grpcOptions, grpc.MaxConcurrentStreams(grpcMaxConcurrentStreams))
 	grpcServer := grpc.NewServer(grpcOptions...)
-	xds.RunServer(ctx, grpcServer, log)
+	xds.RunServer(ctx, grpcServer)
 
 	go func() {
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", xdsPort))
@@ -43,17 +44,26 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("management server listening on %d\n", xdsPort)
+		log.Infof("management server listening on %d", xdsPort)
 		if err = grpcServer.Serve(lis); err != nil {
 			log.Println(err)
 		}
 	}()
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("/health")
+		log.Debug("/health")
 		fmt.Fprint(w, "{\"status\":\"UP\"}")
 	})
 
-	log.Println("App has started on port 0.0.0.0:8080")
+	apiExtClient, err := discovery.CreateApiExtensionClientSet()
+	if err != nil {
+		log.Panicf("Failed to create ClientSet for k8s: %v", err)
+	}
+	_, err = v1alpha1.CreateCRD(ctx, apiExtClient)
+	if err != nil {
+		log.Panicf("Failed to create CRD RouteConfig: %v", err)
+	}
+
+	log.Info("App has started on port 0.0.0.0:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

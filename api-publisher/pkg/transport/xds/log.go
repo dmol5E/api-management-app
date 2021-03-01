@@ -1,22 +1,22 @@
 package xds
 
 import (
-	logs "log"
+	logs "github.com/sirupsen/logrus"
 
 	"github.com/envoyproxy/go-control-plane/pkg/log"
 )
 
 var logger = log.LoggerFuncs{
 	DebugFunc: func(s string, i ...interface{}) {
-		logs.Printf("[DEBUG]"+s, i...)
+		logs.Debugf(s, i...)
 	},
 	InfoFunc: func(s string, i ...interface{}) {
-		logs.Printf("[INFO]"+s, i...)
+		logs.Infof(s, i...)
 	},
 	ErrorFunc: func(s string, i ...interface{}) {
-		logs.Printf("[ERROR]"+s, i...)
+		logs.Errorf(s, i...)
 	},
 	WarnFunc: func(s string, i ...interface{}) {
-		logs.Printf("[WARN]"+s, i...)
+		logs.Warnf(s, i...)
 	},
 }

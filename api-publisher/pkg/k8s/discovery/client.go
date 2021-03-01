@@ -2,26 +2,47 @@ package discovery
 
 import (
 	"context"
-	"fmt"
+
+	log "github.com/sirupsen/logrus"
 
 	clientset "github.com/dmol5e/api-management-app/api-publisher/pkg/client/clientset/versioned"
+	apiextension "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
 
-func InitClient(ctx context.Context, namespace string) (chan int, error) {
+func CreateRouteConfigClientSet() (*clientset.Clientset, error) {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		log.WithError(err).Panic("Can't set up cluster config")
 	}
-	stop := make(chan int)
 
 	kubeClient, err := clientset.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
-	watcher, err := kubeClient.ApimanagementV1alpha1().RouteConfigs("").Watch(ctx, v1.ListOptions{})
+
+	return kubeClient, nil
+}
+
+func CreateApiExtensionClientSet() (apiextension.Interface, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.WithError(err).Panic("Can't set up cluster config")
+	}
+
+	kubeClient, err := apiextension.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubeClient, nil
+}
+
+func StartWatching(ctx context.Context, client *clientset.Clientset, namespace string) (chan int, error) {
+	stop := make(chan int)
+	watcher, err := client.ApimanagementV1alpha1().RouteConfigs(namespace).Watch(ctx, v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +52,9 @@ func InitClient(ctx context.Context, namespace string) (chan int, error) {
 		for {
 			select {
 			case event := <-ch:
-				fmt.Printf("Event type: %s, object: %v", event.Type, event.Object)
+				log.Infof("Event type: %s, object: %v", event.Type, event.Object)
 			case <-stop:
+				log.Info("Watching CR stopped")
 				return
 			}
 		}
