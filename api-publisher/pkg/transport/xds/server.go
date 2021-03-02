@@ -22,7 +22,7 @@ type Server struct {
 }
 
 //RunServer Start server to serve Envoy xDS requests
-func RunServer(ctx context.Context, grpcServer *grpc.Server) *Server {
+func PrepareServer(ctx context.Context, grpcServer *grpc.Server) *Server {
 
 	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, logger)
 	server := serverv3.NewServer(ctx, cache, nil)

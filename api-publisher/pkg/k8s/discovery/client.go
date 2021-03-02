@@ -10,6 +10,7 @@ import (
 	clientset "github.com/dmol5e/api-management-app/api-publisher/pkg/client/clientset/versioned"
 	apiextension "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	watch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -76,7 +77,7 @@ func CreateApiExtensionClientSet() (apiextension.Interface, error) {
 	return kubeClient, nil
 }
 
-func StartWatching(ctx context.Context, client *clientset.Clientset, namespace string) (chan int, error) {
+func StartWatching(ctx context.Context, client *clientset.Clientset, namespace string, eventHandler func(event watch.Event) error) (chan int, error) {
 	stop := make(chan int)
 	watcher, err := client.ApimanagementV1alpha1().RouteConfigs(namespace).Watch(ctx, v1.ListOptions{})
 	if err != nil {
@@ -95,6 +96,9 @@ func StartWatching(ctx context.Context, client *clientset.Clientset, namespace s
 			select {
 			case event := <-ch:
 				log.Infof("Event type: %s, object: %v", event.Type, event.Object)
+				if err := eventHandler(event); err != nil {
+					log.Errorf("Failed to handle event %v: %v", event, err)
+				}
 			case <-stop:
 				log.Info("Watching CR stopped")
 				return
