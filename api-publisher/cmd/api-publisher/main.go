@@ -146,7 +146,7 @@ func (r SnapshotResources) GetEndpoints() []types.Resource {
 }
 
 func (r SnapshotResources) GetClusters() []types.Resource {
-	clusters := make([]types.Resource, len(r.Clusters))
+	clusters := make([]types.Resource, 0)
 	for _, v := range r.Clusters {
 		clusters = append(clusters, v)
 	}
@@ -154,7 +154,7 @@ func (r SnapshotResources) GetClusters() []types.Resource {
 }
 
 func (r SnapshotResources) GetRouteConfigs() []types.Resource {
-	routeConfigs := make([]types.Resource, len(r.RouteConfigs))
+	routeConfigs := make([]types.Resource, 0)
 	for _, v := range r.RouteConfigs {
 		routeConfigs = append(routeConfigs, v)
 	}
@@ -162,7 +162,7 @@ func (r SnapshotResources) GetRouteConfigs() []types.Resource {
 }
 
 func (r SnapshotResources) GetListeners() []types.Resource {
-	listeners := make([]types.Resource, len(r.Listeners))
+	listeners := make([]types.Resource, 0)
 	for _, v := range r.Listeners {
 		listeners = append(listeners, v)
 	}
@@ -170,7 +170,7 @@ func (r SnapshotResources) GetListeners() []types.Resource {
 }
 
 func (r SnapshotResources) GetRuntimes() []types.Resource {
-	runtimes := make([]types.Resource, len(r.Runtimes))
+	runtimes := make([]types.Resource, 0)
 	for _, v := range r.Runtimes {
 		runtimes = append(runtimes, v)
 	}
@@ -178,7 +178,7 @@ func (r SnapshotResources) GetRuntimes() []types.Resource {
 }
 
 func (r SnapshotResources) GetSecrets() []types.Resource {
-	secrets := make([]types.Resource, len(r.Secrets))
+	secrets := make([]types.Resource, 0)
 	for _, v := range r.Secrets {
 		secrets = append(secrets, v)
 	}
@@ -221,7 +221,12 @@ func MakeGatewayConfiguration(routeConfigs []v1alpha1.RouteConfig) map[string]Sn
 }
 
 func MakeSnapshotResources(routeConfig v1alpha1.RouteConfigSpec) SnapshotResources {
-	result := SnapshotResources{}
+	result := SnapshotResources{
+		Endpoints:    make(map[string]*endpoint.Endpoint),
+		Clusters:     make(map[string]*cluster.Cluster),
+		RouteConfigs: make(map[string]*route.RouteConfiguration),
+		Listeners:    make(map[string]*listener.Listener),
+	}
 
 	cluster := makeCluster(routeConfig.Destination)
 	routes := make([]*route.Route, len(routeConfig.Routes))

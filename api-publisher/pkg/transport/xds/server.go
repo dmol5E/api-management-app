@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	endpointservice "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"
@@ -17,6 +18,16 @@ import (
 	"google.golang.org/grpc"
 )
 
+type ClusterNodeHash struct {
+}
+
+func (ClusterNodeHash) ID(node *core.Node) string {
+	if node == nil {
+		return ""
+	}
+	return node.Cluster
+}
+
 type Server struct {
 	cache cachev3.SnapshotCache
 }
@@ -24,7 +35,7 @@ type Server struct {
 //RunServer Start server to serve Envoy xDS requests
 func PrepareServer(ctx context.Context, grpcServer *grpc.Server) *Server {
 
-	cache := cachev3.NewSnapshotCache(false, cachev3.IDHash{}, logger)
+	cache := cachev3.NewSnapshotCache(false, ClusterNodeHash{}, logger)
 	server := serverv3.NewServer(ctx, cache, nil)
 
 	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
@@ -44,7 +55,7 @@ func (s *Server) Update(nodeID string, snapshot cachev3.Snapshot) error {
 	if err := snapshot.Consistent(); err != nil {
 		log.Errorf("snapshot inconsistency: %+v\n%+v", snapshot, err)
 	}
-	log.Printf("will serve snapshot %+v", snapshot)
+	log.Printf("Update snapshot for envoy '%s' with new configuration: %+v", nodeID, snapshot)
 	if err := s.cache.SetSnapshot(nodeID, snapshot); err != nil {
 		log.Fatalf("snapshot error %q for %+v", err, snapshot)
 		return err
