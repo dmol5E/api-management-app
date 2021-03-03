@@ -27,14 +27,14 @@ type RouteConfigList struct {
 // RouteConfigSpec is configuration of routes for API-management
 // +k8s:deepcopy-gen=true
 type RouteConfigSpec struct {
-	Gateway string  `json:"gateway"`
-	Routes  []Route `json:"routes"`
+	Gateway     string      `json:"gateway"`
+	Destination Destination `json:"destination"`
+	Routes      []Route     `json:"routes"`
 }
 
 type Route struct {
-	Destination Destination `json:"destination"`
-	Match       Match       `json:"match"`
-	PathRewrite string      `json:"pathRewrite"`
+	Match       Match  `json:"match"`
+	PathRewrite string `json:"pathRewrite"`
 }
 
 type Match struct {

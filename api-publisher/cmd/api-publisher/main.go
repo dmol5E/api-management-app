@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	applog "github.com/dmol5e/api-management-app/api-publisher/pkg/log"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
@@ -20,6 +22,15 @@ import (
 	"github.com/dmol5e/api-management-app/api-publisher/pkg/client/clientset/versioned"
 	"github.com/dmol5e/api-management-app/api-publisher/pkg/k8s/discovery"
 	"github.com/dmol5e/api-management-app/api-publisher/pkg/transport/xds"
+	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
+	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
 )
 
@@ -80,7 +91,7 @@ func main() {
 	if err != nil {
 		log.Panicf("Failed to create ClientSet for handling RouteConfig CR: %v", err)
 	}
-	handler := MakeEventHandler(xdsServer, routeConfigClient, namespace)
+	handler := MakeEventHandler(ctx, xdsServer, routeConfigClient, namespace)
 	stopCh, err := discovery.StartWatching(ctx, routeConfigClient, namespace, handler)
 	if err != nil {
 		log.Panicf("Failed to start Watching RouteConfig: %v", err)
@@ -118,10 +129,10 @@ func MakeEventHandler(ctx context.Context, xdsServer *xds.Server, routeConfigCli
 }
 
 type SnapshotResources struct {
-	Endpoints    map[string]types.Resource
-	Clusters     map[string]types.Resource
-	RouteConfigs map[string]types.Resource
-	Listeners    map[string]types.Resource
+	Endpoints    map[string]*endpoint.Endpoint
+	Clusters     map[string]*cluster.Cluster
+	RouteConfigs map[string]*route.RouteConfiguration
+	Listeners    map[string]*listener.Listener
 	Runtimes     map[string]types.Resource
 	Secrets      map[string]types.Resource
 }
@@ -175,7 +186,25 @@ func (r SnapshotResources) GetSecrets() []types.Resource {
 }
 
 func (r SnapshotResources) Merge(newRes SnapshotResources) SnapshotResources {
-	return SnapshotResources{}
+	for k, v := range newRes.Endpoints {
+		r.Endpoints[k] = v
+	}
+	for k, v := range newRes.Clusters {
+		r.Clusters[k] = v
+	}
+	for k, v := range newRes.RouteConfigs {
+		r.RouteConfigs[k] = mergeRouteConfigs(r.RouteConfigs[k], v)
+	}
+	for k, v := range newRes.Listeners {
+		r.Listeners[k] = v
+	}
+	for k, v := range newRes.Runtimes {
+		r.Runtimes[k] = v
+	}
+	for k, v := range newRes.Secrets {
+		r.Secrets[k] = v
+	}
+	return r
 }
 
 func MakeGatewayConfiguration(routeConfigs []v1alpha1.RouteConfig) map[string]SnapshotResources {
@@ -192,5 +221,154 @@ func MakeGatewayConfiguration(routeConfigs []v1alpha1.RouteConfig) map[string]Sn
 }
 
 func MakeSnapshotResources(routeConfig v1alpha1.RouteConfigSpec) SnapshotResources {
-	return SnapshotResources{}
+	result := SnapshotResources{}
+
+	cluster := makeCluster(routeConfig.Destination)
+	routes := make([]*route.Route, len(routeConfig.Routes))
+	for i, envoyRoute := range routeConfig.Routes {
+		routes[i] = makeRoute(cluster.Name, envoyRoute)
+	}
+	envoyRouteConfig := makeRouteConfig("main-route-config", routes)
+	listener := makeHTTPListener("main-listener", "main-route-config")
+	result.Clusters[cluster.Name] = cluster
+	result.RouteConfigs[envoyRouteConfig.Name] = envoyRouteConfig
+	result.Listeners[listener.Name] = listener
+	return result
+}
+
+func makeHTTPListener(listenerName string, routeConfigName string) *listener.Listener {
+	// HTTP filter configuration
+	manager := &hcm.HttpConnectionManager{
+		CodecType:  hcm.HttpConnectionManager_AUTO,
+		StatPrefix: "http",
+		RouteSpecifier: &hcm.HttpConnectionManager_Rds{
+			Rds: &hcm.Rds{
+				ConfigSource:    makeConfigSource(),
+				RouteConfigName: routeConfigName,
+			},
+		},
+		HttpFilters: []*hcm.HttpFilter{{
+			Name: wellknown.Router,
+		}},
+	}
+	pbst, err := ptypes.MarshalAny(manager)
+	if err != nil {
+		panic(err)
+	}
+
+	return &listener.Listener{
+		Name: listenerName,
+		Address: &core.Address{
+			Address: &core.Address_SocketAddress{
+				SocketAddress: &core.SocketAddress{
+					Protocol: core.SocketAddress_TCP,
+					Address:  "0.0.0.0",
+					PortSpecifier: &core.SocketAddress_PortValue{
+						PortValue: uint32(8080),
+					},
+				},
+			},
+		},
+		FilterChains: []*listener.FilterChain{{
+			Filters: []*listener.Filter{{
+				Name: wellknown.HTTPConnectionManager,
+				ConfigType: &listener.Filter_TypedConfig{
+					TypedConfig: pbst,
+				},
+			}},
+		}},
+	}
+}
+
+func makeRouteConfig(routeName string, routes []*route.Route) *route.RouteConfiguration {
+	routeConfig := &route.RouteConfiguration{
+		Name: routeName,
+		VirtualHosts: []*route.VirtualHost{{
+			Name:    "local_service",
+			Domains: []string{"*"},
+			Routes:  routes,
+		}},
+	}
+	return routeConfig
+}
+
+func makeRoute(clusterName string, kubeRoute v1alpha1.Route) *route.Route {
+	return &route.Route{
+		Match: &route.RouteMatch{
+			PathSpecifier: &route.RouteMatch_Prefix{
+				Prefix: kubeRoute.Match.Path,
+			},
+		},
+		Action: &route.Route_Route{
+			Route: &route.RouteAction{
+				PrefixRewrite: kubeRoute.PathRewrite,
+				ClusterSpecifier: &route.RouteAction_Cluster{
+					Cluster: clusterName,
+				},
+				HostRewriteSpecifier: &route.RouteAction_AutoHostRewrite{},
+			},
+		},
+	}
+}
+
+func makeCluster(destination v1alpha1.Destination) *cluster.Cluster {
+	host := destination.Address.Host
+	port := destination.Address.Port
+	clusterName := host + "||" + strconv.FormatUint(uint64(port), 10)
+	return &cluster.Cluster{
+		Name:                 clusterName,
+		ConnectTimeout:       ptypes.DurationProto(5 * time.Second),
+		ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
+		LbPolicy:             cluster.Cluster_ROUND_ROBIN,
+		LoadAssignment:       makeEndpoint(clusterName, host, port),
+		DnsLookupFamily:      cluster.Cluster_V4_ONLY,
+	}
+}
+
+func makeEndpoint(clusterName string, host string, port uint32) *endpoint.ClusterLoadAssignment {
+	return &endpoint.ClusterLoadAssignment{
+		ClusterName: clusterName,
+		Endpoints: []*endpoint.LocalityLbEndpoints{{
+			LbEndpoints: []*endpoint.LbEndpoint{{
+				HostIdentifier: &endpoint.LbEndpoint_Endpoint{
+					Endpoint: &endpoint.Endpoint{
+						Address: &core.Address{
+							Address: &core.Address_SocketAddress{
+								SocketAddress: &core.SocketAddress{
+									Protocol: core.SocketAddress_TCP,
+									Address:  host,
+									PortSpecifier: &core.SocketAddress_PortValue{
+										PortValue: port,
+									},
+								},
+							},
+						},
+					},
+				},
+			}},
+		}},
+	}
+}
+
+func makeConfigSource() *core.ConfigSource {
+	source := &core.ConfigSource{}
+	source.ResourceApiVersion = resource.DefaultAPIVersion
+	source.ConfigSourceSpecifier = &core.ConfigSource_ApiConfigSource{
+		ApiConfigSource: &core.ApiConfigSource{
+			TransportApiVersion:       resource.DefaultAPIVersion,
+			ApiType:                   core.ApiConfigSource_GRPC,
+			SetNodeOnFirstMessageOnly: true,
+			GrpcServices: []*core.GrpcService{{
+				TargetSpecifier: &core.GrpcService_EnvoyGrpc_{
+					EnvoyGrpc: &core.GrpcService_EnvoyGrpc{ClusterName: "xds_cluster"},
+				},
+			}},
+		},
+	}
+	return source
+}
+
+func mergeRouteConfigs(a *route.RouteConfiguration, b *route.RouteConfiguration) *route.RouteConfiguration {
+	b.VirtualHosts[0].Routes = append(b.VirtualHosts[0].Routes, a.VirtualHosts[0].Routes...)
+	return b
 }
