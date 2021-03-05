@@ -40,22 +40,6 @@ func CreateCRD(ctx context.Context, clientSet apiextension.Interface) (*apiexten
 										"gateway": {
 											Type: "string",
 										},
-										"destination": {
-											Type: "object",
-											Properties: map[string]apiextensionv1.JSONSchemaProps{
-												"address": {
-													Type: "object",
-													Properties: map[string]apiextensionv1.JSONSchemaProps{
-														"host": {
-															Type: "string",
-														},
-														"port": {
-															Type: "integer",
-														},
-													},
-												},
-											},
-										},
 										"routes": {
 											Type: "array",
 											Items: &apiextensionv1.JSONSchemaPropsOrArray{
@@ -63,16 +47,60 @@ func CreateCRD(ctx context.Context, clientSet apiextension.Interface) (*apiexten
 													Format: "object",
 													Type:   "object",
 													Properties: map[string]apiextensionv1.JSONSchemaProps{
-														"match": {
+														"destination": {
 															Type: "object",
 															Properties: map[string]apiextensionv1.JSONSchemaProps{
-																"path": {
-																	Type: "string",
+																"address": {
+																	Type: "object",
+																	Properties: map[string]apiextensionv1.JSONSchemaProps{
+																		"host": {
+																			Type: "string",
+																		},
+																		"port": {
+																			Type: "integer",
+																		},
+																	},
 																},
 															},
 														},
-														"pathRewrite": {
-															Type: "string",
+														"rules": {
+															Type: "array",
+															Items: &apiextensionv1.JSONSchemaPropsOrArray{
+																Schema: &apiextensionv1.JSONSchemaProps{
+																	Format: "object",
+																	Type:   "object",
+																	Properties: map[string]apiextensionv1.JSONSchemaProps{
+																		"match": {
+																			Type: "object",
+																			Properties: map[string]apiextensionv1.JSONSchemaProps{
+																				"path": {
+																					Type: "string",
+																				},
+																				"headers": {
+																					Type: "array",
+																					Items: &apiextensionv1.JSONSchemaPropsOrArray{
+																						Schema: &apiextensionv1.JSONSchemaProps{
+																							Format: "object",
+																							Type:   "object",
+																							Properties: map[string]apiextensionv1.JSONSchemaProps{
+																								"name": {
+																									Type: "string",
+																								},
+																								"value": {
+																									Type: "string",
+																								},
+																							},
+																						},
+																					},
+																				},
+																			},
+																		},
+																		"pathRewrite": {
+																			Type: "string",
+																		},
+																	},
+																},
+															},
 														},
 													},
 												},
@@ -90,7 +118,7 @@ func CreateCRD(ctx context.Context, clientSet apiextension.Interface) (*apiexten
 			Names: apiextensionv1.CustomResourceDefinitionNames{
 				Plural:     Plural,
 				Singular:   Singular,
-				Kind:       reflect.TypeOf(RouteConfig{}).Name(),
+				Kind:       reflect.TypeOf(APIConfig{}).Name(),
 				ShortNames: []string{ShortName},
 			},
 		},

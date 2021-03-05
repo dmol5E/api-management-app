@@ -28,8 +28,8 @@ type FakeApimanagementV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeApimanagementV1alpha1) RouteConfigs(namespace string) v1alpha1.RouteConfigInterface {
-	return &FakeRouteConfigs{c, namespace}
+func (c *FakeApimanagementV1alpha1) APIConfigs(namespace string) v1alpha1.APIConfigInterface {
+	return &FakeAPIConfigs{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

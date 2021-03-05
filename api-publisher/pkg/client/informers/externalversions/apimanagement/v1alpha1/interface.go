@@ -24,8 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// RouteConfigs returns a RouteConfigInformer.
-	RouteConfigs() RouteConfigInformer
+	// APIConfigs returns a APIConfigInformer.
+	APIConfigs() APIConfigInformer
 }
 
 type version struct {
@@ -39,7 +39,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// RouteConfigs returns a RouteConfigInformer.
-func (v *version) RouteConfigs() RouteConfigInformer {
-	return &routeConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// APIConfigs returns a APIConfigInformer.
+func (v *version) APIConfigs() APIConfigInformer {
+	return &aPIConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

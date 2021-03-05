@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
-// RouteConfigListerExpansion allows custom methods to be added to
-// RouteConfigLister.
-type RouteConfigListerExpansion interface{}
+// APIConfigListerExpansion allows custom methods to be added to
+// APIConfigLister.
+type APIConfigListerExpansion interface{}
 
-// RouteConfigNamespaceListerExpansion allows custom methods to be added to
-// RouteConfigNamespaceLister.
-type RouteConfigNamespaceListerExpansion interface{}
+// APIConfigNamespaceListerExpansion allows custom methods to be added to
+// APIConfigNamespaceLister.
+type APIConfigNamespaceListerExpansion interface{}

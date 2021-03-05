@@ -30,7 +30,7 @@ func init() {
 	flag.Parse()
 }
 
-func CreateRouteConfigClientSet() (*clientset.Clientset, error) {
+func CreateAPIConfigClientSet() (*clientset.Clientset, error) {
 	// creates the in-cluster config
 	var config *rest.Config
 	var err error
@@ -79,7 +79,7 @@ func CreateApiExtensionClientSet() (apiextension.Interface, error) {
 
 func StartWatching(ctx context.Context, client *clientset.Clientset, namespace string, eventHandler func(event watch.Event) error) (chan int, error) {
 	stop := make(chan int)
-	watcher, err := client.ApimanagementV1alpha1().RouteConfigs(namespace).Watch(ctx, v1.ListOptions{})
+	watcher, err := client.ApimanagementV1alpha1().APIConfigs(namespace).Watch(ctx, v1.ListOptions{})
 	if err != nil {
 		log.Error(err)
 		return nil, err

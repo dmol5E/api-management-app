@@ -84,17 +84,17 @@ func main() {
 	}
 	_, err = v1alpha1.CreateCRD(ctx, apiExtClient)
 	if err != nil {
-		log.Panicf("Failed to create CRD RouteConfig: %v", err)
+		log.Panicf("Failed to create CRD APIConfig: %v", err)
 	}
 
-	routeConfigClient, err := discovery.CreateRouteConfigClientSet()
+	apiConfigClient, err := discovery.CreateAPIConfigClientSet()
 	if err != nil {
-		log.Panicf("Failed to create ClientSet for handling RouteConfig CR: %v", err)
+		log.Panicf("Failed to create ClientSet for handling APIConfig CR: %v", err)
 	}
-	handler := MakeEventHandler(ctx, xdsServer, routeConfigClient, namespace)
-	stopCh, err := discovery.StartWatching(ctx, routeConfigClient, namespace, handler)
+	handler := MakeEventHandler(ctx, xdsServer, apiConfigClient, namespace)
+	stopCh, err := discovery.StartWatching(ctx, apiConfigClient, namespace, handler)
 	if err != nil {
-		log.Panicf("Failed to start Watching RouteConfig: %v", err)
+		log.Panicf("Failed to start Watching APIConfig: %v", err)
 	}
 	defer func() {
 		stopCh <- 0
@@ -104,14 +104,14 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func MakeEventHandler(ctx context.Context, xdsServer *xds.Server, routeConfigClient *versioned.Clientset, namespace string) func(watch.Event) error {
+func MakeEventHandler(ctx context.Context, xdsServer *xds.Server, apiConfigClient *versioned.Clientset, namespace string) func(watch.Event) error {
 	return func(e watch.Event) error {
-		routeConfigList, err := routeConfigClient.ApimanagementV1alpha1().RouteConfigs(namespace).List(ctx, v1.ListOptions{})
+		apiConfigList, err := apiConfigClient.ApimanagementV1alpha1().APIConfigs(namespace).List(ctx, v1.ListOptions{})
 		if err != nil {
-			log.WithError(err).Errorf("Failed to get list of RouteConfig")
+			log.WithError(err).Errorf("Failed to get list of APIConfig")
 		}
 
-		gatewayConfigs := MakeGatewayConfiguration(routeConfigList.Items)
+		gatewayConfigs := MakeGatewayConfiguration(apiConfigList.Items)
 		for k, v := range gatewayConfigs {
 			snapshot := cache.NewSnapshot(
 				uuid.New().String(),
@@ -207,7 +207,7 @@ func (r SnapshotResources) Merge(newRes SnapshotResources) SnapshotResources {
 	return r
 }
 
-func MakeGatewayConfiguration(routeConfigs []v1alpha1.RouteConfig) map[string]SnapshotResources {
+func MakeGatewayConfiguration(routeConfigs []v1alpha1.APIConfig) map[string]SnapshotResources {
 	result := make(map[string]SnapshotResources)
 	for _, routeConfig := range routeConfigs {
 		gateway := routeConfig.Spec.Gateway
@@ -220,7 +220,7 @@ func MakeGatewayConfiguration(routeConfigs []v1alpha1.RouteConfig) map[string]Sn
 	return result
 }
 
-func MakeSnapshotResources(routeConfig v1alpha1.RouteConfigSpec) SnapshotResources {
+func MakeSnapshotResources(apiConfig v1alpha1.APIConfigSpec) SnapshotResources {
 	result := SnapshotResources{
 		Endpoints:    make(map[string]*endpoint.Endpoint),
 		Clusters:     make(map[string]*cluster.Cluster),
@@ -228,14 +228,18 @@ func MakeSnapshotResources(routeConfig v1alpha1.RouteConfigSpec) SnapshotResourc
 		Listeners:    make(map[string]*listener.Listener),
 	}
 
-	cluster := makeCluster(routeConfig.Destination)
-	routes := make([]*route.Route, len(routeConfig.Routes))
-	for i, envoyRoute := range routeConfig.Routes {
-		routes[i] = makeRoute(cluster.Name, envoyRoute)
+	allRoutes := make([]*route.Route, 0)
+	for _, apiConfigRoute := range apiConfig.Routes {
+		cluster := makeCluster(apiConfigRoute.Destination)
+		routes := make([]*route.Route, len(apiConfigRoute.Rules))
+		for i, apiConfigRule := range apiConfigRoute.Rules {
+			routes[i] = makeRoute(cluster.Name, apiConfigRule)
+		}
+		result.Clusters[cluster.Name] = cluster
+		allRoutes = append(allRoutes, routes...)
 	}
-	envoyRouteConfig := makeRouteConfig("main-route-config", routes)
+	envoyRouteConfig := makeRouteConfig("main-route-config", allRoutes)
 	listener := makeHTTPListener("main-listener", "main-route-config")
-	result.Clusters[cluster.Name] = cluster
 	result.RouteConfigs[envoyRouteConfig.Name] = envoyRouteConfig
 	result.Listeners[listener.Name] = listener
 	return result
@@ -297,16 +301,17 @@ func makeRouteConfig(routeName string, routes []*route.Route) *route.RouteConfig
 	return routeConfig
 }
 
-func makeRoute(clusterName string, kubeRoute v1alpha1.Route) *route.Route {
+func makeRoute(clusterName string, apiConfigRule v1alpha1.Rule) *route.Route {
 	return &route.Route{
 		Match: &route.RouteMatch{
 			PathSpecifier: &route.RouteMatch_Prefix{
-				Prefix: kubeRoute.Match.Path,
+				Prefix: apiConfigRule.Match.Path,
 			},
+			Headers: makeHeaders(apiConfigRule.Match.Headers),
 		},
 		Action: &route.Route_Route{
 			Route: &route.RouteAction{
-				PrefixRewrite: kubeRoute.PathRewrite,
+				PrefixRewrite: apiConfigRule.PathRewrite,
 				ClusterSpecifier: &route.RouteAction_Cluster{
 					Cluster: clusterName,
 				},
@@ -314,6 +319,19 @@ func makeRoute(clusterName string, kubeRoute v1alpha1.Route) *route.Route {
 			},
 		},
 	}
+}
+
+func makeHeaders(apiConfigHeaders []v1alpha1.MatchHeader) []*route.HeaderMatcher {
+	headerMatchers := make([]*route.HeaderMatcher, len(apiConfigHeaders))
+	for i, apiConfigHeader := range apiConfigHeaders {
+		headerMatchers[i] = &route.HeaderMatcher{
+			Name: apiConfigHeader.Name,
+			HeaderMatchSpecifier: &route.HeaderMatcher_ExactMatch{
+				ExactMatch: apiConfigHeader.Value,
+			},
+		}
+	}
+	return headerMatchers
 }
 
 func makeCluster(destination v1alpha1.Destination) *cluster.Cluster {

@@ -32,59 +32,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// RouteConfigInformer provides access to a shared informer and lister for
-// RouteConfigs.
-type RouteConfigInformer interface {
+// APIConfigInformer provides access to a shared informer and lister for
+// APIConfigs.
+type APIConfigInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.RouteConfigLister
+	Lister() v1alpha1.APIConfigLister
 }
 
-type routeConfigInformer struct {
+type aPIConfigInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewRouteConfigInformer constructs a new informer for RouteConfig type.
+// NewAPIConfigInformer constructs a new informer for APIConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewRouteConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredRouteConfigInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewAPIConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredAPIConfigInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredRouteConfigInformer constructs a new informer for RouteConfig type.
+// NewFilteredAPIConfigInformer constructs a new informer for APIConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredRouteConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredAPIConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApimanagementV1alpha1().RouteConfigs(namespace).List(context.TODO(), options)
+				return client.ApimanagementV1alpha1().APIConfigs(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApimanagementV1alpha1().RouteConfigs(namespace).Watch(context.TODO(), options)
+				return client.ApimanagementV1alpha1().APIConfigs(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&apimanagementv1alpha1.RouteConfig{},
+		&apimanagementv1alpha1.APIConfig{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *routeConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredRouteConfigInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *aPIConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredAPIConfigInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *routeConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apimanagementv1alpha1.RouteConfig{}, f.defaultInformer)
+func (f *aPIConfigInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apimanagementv1alpha1.APIConfig{}, f.defaultInformer)
 }
 
-func (f *routeConfigInformer) Lister() v1alpha1.RouteConfigLister {
-	return v1alpha1.NewRouteConfigLister(f.Informer().GetIndexer())
+func (f *aPIConfigInformer) Lister() v1alpha1.APIConfigLister {
+	return v1alpha1.NewAPIConfigLister(f.Informer().GetIndexer())
 }

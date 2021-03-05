@@ -26,7 +26,7 @@ import (
 
 type ApimanagementV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	RouteConfigsGetter
+	APIConfigsGetter
 }
 
 // ApimanagementV1alpha1Client is used to interact with features provided by the apimanagement.cloud group.
@@ -34,8 +34,8 @@ type ApimanagementV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ApimanagementV1alpha1Client) RouteConfigs(namespace string) RouteConfigInterface {
-	return newRouteConfigs(c, namespace)
+func (c *ApimanagementV1alpha1Client) APIConfigs(namespace string) APIConfigInterface {
+	return newAPIConfigs(c, namespace)
 }
 
 // NewForConfig creates a new ApimanagementV1alpha1Client for the given config.

@@ -10,17 +10,17 @@ import (
 
 const (
 	// Kind is normally the CamelCased singular type. The resource manifest uses this.
-	Kind string = "RouteConfig"
+	Kind string = "APIConfig"
 	// GroupVersion is the version.
 	GroupVersion string = "v1alpha1"
 	// Plural is the plural name used in /apis/<group>/<version>/<plural>
-	Plural string = "routeconfigs"
+	Plural string = "apiconfigs"
 	// Singular is used as an alias on kubectl for display.
-	Singular string = "routeconfig"
+	Singular string = "apiconfig"
 	// CRDName is the CRD name for RouteConfig.
 	CRDName string = Plural + "." + apimanagement.GroupName
 	// ShortName is the short alias for the CRD.
-	ShortName string = "rcf"
+	ShortName string = "apicfg"
 )
 
 var (
@@ -37,8 +37,8 @@ func Resource(resource string) schema.GroupResource {
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&RouteConfig{},
-		&RouteConfigList{},
+		&APIConfig{},
+		&APIConfigList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
