@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: deployment-operator
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - watch
+  - list
+  - create
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - watch
+  - list
+  - create
+  - update
+  - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: deployment-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: deployment-operator
+subjects:
+- kind: ServiceAccount
+  name: operator
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: custom-resource-manager
+rules:
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - watch
+  - list
+  - create
+  - update
+  - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: route-config-manager
+rules:
+- apiGroups:
+  - apimanagement.cloud
+  resources:
+  - routeconfigs
+  verbs:
+  - get
+  - watch
+  - list
+  - create
+  - update
+  - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: custom-resource-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: custom-resource-manager
+subjects:
+- kind: ServiceAccount
+  name: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: route-config-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: route-config-manager
+subjects:
+- kind: ServiceAccount
+  name: default
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "operator"
+  labels:
+    name: 'operator'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 'operator'
+  template:
+    metadata:
+      labels:
+        app: 'operator'
+    spec:
+      containers:
+        - name: "operator"
+          image: 'dmol5e/operator:latest'
+          env:
+            - name: CLOUD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RLOG_LOG_LEVEL
+              value: DEBUG
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '200Mi'
+            limits:
+              cpu: '100m'
+              memory: '200Mi'
+      serviceAccountName: operator

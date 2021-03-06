@@ -1,7 +1,7 @@
 apiVersion: apimanagement.cloud/v1alpha1
 kind: APIConfig
 metadata:
-  name: simple-api-config
+  name: example-api-config
 spec:
   gateway: gateway
   routes:
@@ -12,4 +12,7 @@ spec:
     rules:
     - match:
         path: /api/v1/service
+        headers:
+        - name: X-Header
+          value: x-value
       pathRewrite: /

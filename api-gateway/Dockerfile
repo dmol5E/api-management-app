@@ -8,7 +8,7 @@ USER 10001
 COPY config.yaml /envoy/envoy.yaml
 COPY run-gateway.sh /envoy/run-gateway.sh
 
-EXPOSE 8080 9901
+EXPOSE 8080 9903
 
 USER root
 RUN chmod -R 777 /envoy
